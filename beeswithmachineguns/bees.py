@@ -252,7 +252,11 @@ def _attack(params):
         response['requests_per_second'] = float(requests_per_second_search.group(1))
         response['failed_requests'] = float(failed_requests.group(1))
         response['complete_requests'] = float(complete_requests_search.group(1))
-        response['non_200_responses'] = float(non_200_responses_search.group(1))
+        
+        if non_200_responses_search is None:
+            response['non_200_responses'] = 0
+        else
+            response['non_200_responses'] = float(non_200_responses_search.group(1))
 
         stdin, stdout, stderr = client.exec_command('cat %(csv_filename)s' % params)
         response['request_time_cdf'] = []
