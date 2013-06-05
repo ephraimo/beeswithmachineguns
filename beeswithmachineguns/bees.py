@@ -255,7 +255,7 @@ def _attack(params):
         
         if non_200_responses_search is None:
             response['non_200_responses'] = 0
-        else
+        else:
             response['non_200_responses'] = float(non_200_responses_search.group(1))
 
         stdin, stdout, stderr = client.exec_command('cat %(csv_filename)s' % params)
