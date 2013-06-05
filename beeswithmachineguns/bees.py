@@ -246,7 +246,7 @@ def _attack(params):
         requests_per_second_search = re.search('Requests\ per\ second:\s+([0-9.]+)\ \[#\/sec\]\ \(mean\)', ab_results)
         failed_requests = re.search('Failed\ requests:\s+([0-9.]+)', ab_results)
         complete_requests_search = re.search('Complete\ requests:\s+([0-9]+)', ab_results)
-        non_200_responses_search = re.search('Non-2xx\ responses:\s+([0-9]+)', ab_results)
+        non_200_responses_search = re.search('Non\-2xx\ responses:\s+([0-9]+)', ab_results)
 
         response['ms_per_request'] = float(ms_per_request_search.group(1))
         response['requests_per_second'] = float(requests_per_second_search.group(1))
