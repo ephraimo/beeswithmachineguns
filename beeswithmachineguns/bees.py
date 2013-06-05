@@ -246,11 +246,13 @@ def _attack(params):
         requests_per_second_search = re.search('Requests\ per\ second:\s+([0-9.]+)\ \[#\/sec\]\ \(mean\)', ab_results)
         failed_requests = re.search('Failed\ requests:\s+([0-9.]+)', ab_results)
         complete_requests_search = re.search('Complete\ requests:\s+([0-9]+)', ab_results)
+        non_200_responses_search = re.search('Non-2xx responses:\s+([0-9]+)', ab_results)
 
         response['ms_per_request'] = float(ms_per_request_search.group(1))
         response['requests_per_second'] = float(requests_per_second_search.group(1))
         response['failed_requests'] = float(failed_requests.group(1))
         response['complete_requests'] = float(complete_requests_search.group(1))
+        response['non_200_responses'] = float(non_200_responses_search.group(1))
 
         stdin, stdout, stderr = client.exec_command('cat %(csv_filename)s' % params)
         response['request_time_cdf'] = []
@@ -302,6 +304,10 @@ def _print_results(results, params, csv_filename):
     complete_results = [r['failed_requests'] for r in complete_bees]
     total_failed_requests = sum(complete_results)
     print '     Failed requests:\t\t%i' % total_failed_requests
+    
+    non_200_results = [r['non_200_responses'] for r in complete_bees]
+    total_non_200_results = sum(non_200_results)
+    print '     Non-200 Responses:\t\t%i' % total_non_200_results
 
     complete_results = [r['requests_per_second'] for r in complete_bees]
     mean_requests = sum(complete_results)
