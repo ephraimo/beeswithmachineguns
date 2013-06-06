@@ -278,9 +278,9 @@ def _attack(params):
             response['failed_length'] = float(failed_length_search.group(1))
             
         if failed_exceptions_search is None:
-            response['failed_exceptions_connect'] = 0
+            response['failed_exceptions'] = 0
         else:
-            response['failed_exceptions_connect'] = float(failed_exceptions_search.group(1))
+            response['failed_exceptions'] = float(failed_exceptions_search.group(1))
         
         if non_200_responses_search is None:
             response['non_200_responses'] = 0
@@ -350,7 +350,7 @@ def _print_results(results, params, csv_filename):
     total_failed_length_requests = sum(complete_results)
     print '          Length:\t\t%i' % total_failed_length_requests
     
-    complete_results = [r['failed_exceptions_connect'] for r in complete_bees]
+    complete_results = [r['failed_exceptions'] for r in complete_bees]
     total_failed_exception_requests = sum(complete_results)
     print '          Exception:\t\t%i' % total_failed_exception_requests
     
