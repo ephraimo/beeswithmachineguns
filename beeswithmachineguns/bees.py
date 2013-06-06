@@ -247,11 +247,40 @@ def _attack(params):
         failed_requests = re.search('Failed\ requests:\s+([0-9.]+)', ab_results)
         complete_requests_search = re.search('Complete\ requests:\s+([0-9]+)', ab_results)
         non_200_responses_search = re.search('Non\-2xx\ responses:\s+([0-9]+)', ab_results)
+        
+        """
+        If there are failed requests, get the breakdown
+        (Connect: 0, Receive: 0, Length: 338, Exceptions: 0)
+        """
+        failed_connect_search = re.search('\s+\(Connect:\s+([0-9.]+)', ab_results)
+        failed_receive_search = re.search('\s+\(.+Receive:\s+([0-9.]+)', ab_results)
+        failed_length_search = re.search('\s+\(.+Length:\s+([0-9.]+)', ab_results)
+        failed_exceptions_search = re.search('\s+\(.+Exceptions:\s+([0-9.]+)', ab_results)
 
         response['ms_per_request'] = float(ms_per_request_search.group(1))
         response['requests_per_second'] = float(requests_per_second_search.group(1))
         response['failed_requests'] = float(failed_requests.group(1))
         response['complete_requests'] = float(complete_requests_search.group(1))
+        
+        if failed_connect_search is None:
+            response['failed_connect'] = 0
+        else:
+            response['failed_connect'] = float(failed_connect_search.group(1))
+        
+        if failed_receive_search is None:
+            response['failed_receive'] = 0
+        else:
+            response['failed_receive'] = float(failed_receive_search.group(1))
+            
+        if failed_length_search is None:
+            response['failed_length'] = 0
+        else:
+            response['failed_length'] = float(failed_length_search.group(1))
+            
+        if failed_exceptions_search is None:
+            response['failed_exceptions_connect'] = 0
+        else:
+            response['failed_exceptions_connect'] = float(failed_exceptions_search.group(1))
         
         if non_200_responses_search is None:
             response['non_200_responses'] = 0
@@ -308,6 +337,22 @@ def _print_results(results, params, csv_filename):
     complete_results = [r['failed_requests'] for r in complete_bees]
     total_failed_requests = sum(complete_results)
     print '     Failed requests:\t\t%i' % total_failed_requests
+    
+    complete_results = [r['failed_connect'] for r in complete_bees]
+    total_failed_connect_requests = sum(complete_results)
+    print '          Connect:\t\t%i' % total_failed_connect_requests
+    
+    complete_results = [r['failed_receive'] for r in complete_bees]
+    total_failed_receive_requests = sum(complete_results)
+    print '          Receive:\t\t%i' % total_failed_receive_requests
+    
+    complete_results = [r['failed_length'] for r in complete_bees]
+    total_failed_length_requests = sum(complete_results)
+    print '          Length:\t\t%i' % total_failed_length_requests
+    
+    complete_results = [r['failed_exceptions_connect'] for r in complete_bees]
+    total_failed_exception_requests = sum(complete_results)
+    print '          Exception:\t\t%i' % total_failed_exception_requests
     
     non_200_results = [r['non_200_responses'] for r in complete_bees]
     total_non_200_results = sum(non_200_results)
