@@ -69,6 +69,8 @@ def parse_options():
     attack_cmd.add_argument('-H', '--headers', metavar="HEADERS", dest='headers', default='',
                         help="HTTP headers to send to the target to attack. Multiple headers should be separated by semi-colons, e.g header1:value1;header2:value2")
     attack_cmd.add_argument('-e', '--csv', metavar="FILENAME", dest='csv_filename', default='', help="Store the distribution of results in a csv file for all completed bees (default: '').")
+    attack_cmd.add_argument('-t', '--timelimit', metavar="TIMELIMIT", dest='timelimit', type=int, default=0,
+                        help="Maximum number of seconds to spend for benchmarking. This implies a -n 50000 internally. Use this to benchmark the server within a fixed total amount of time (default: no limit).")
 
     down_cmd = subparsers.add_parser("down", help='Shutdown and deactivate the load testing servers.', description='Shutdown and deactivate the load testing servers.')
     report_cmd = subparsers.add_parser("report", help='Report the status of the load testing servers.', description='Report the status of the load testing servers.')
@@ -97,7 +99,7 @@ def parse_options():
             csv_filename=options.csv_filename,
         )
 
-        bees.attack(options.url, options.number, options.concurrent, **additional_options)
+        bees.attack(options.url, options.number, options.concurrent, options.timelimit, **additional_options)
 
     elif command == 'down':
         bees.down()

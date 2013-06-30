@@ -230,7 +230,10 @@ def _attack(params):
             options += ' -k -T "%(mime_type)s; charset=UTF-8" -p /tmp/honeycomb' % params
 
         params['options'] = options
-        benchmark_command = 'ab -r -n %(num_requests)s -c %(concurrent_requests)s -C "sessionid=NotARealSessionID" %(options)s "%(url)s"' % params
+        if params['timelimit'] > 0:
+            benchmark_command = 'ab -r -t %(timelimit)s -c %(concurrent_requests)s -C "sessionid=NotARealSessionID" %(options)s "%(url)s"' % params
+        else:
+            benchmark_command = 'ab -r -n %(num_requests)s -c %(concurrent_requests)s -C "sessionid=NotARealSessionID" %(options)s "%(url)s"' % params
         stdin, stdout, stderr = client.exec_command(benchmark_command)
 
         response = {}
@@ -409,7 +412,7 @@ def _print_results(results, params, csv_filename):
                     row.append(r['request_time_cdf'][i]["Time in ms"])
                 writer.writerow(row)
     
-def attack(url, n, c, **options):
+def attack(url, n, c, t, **options):
     """
     Test the root url of this site.
     """
@@ -442,20 +445,24 @@ def attack(url, n, c, **options):
 
     instance_count = len(instances)
 
-    if n < instance_count * 2:
-        print 'bees: error: the total number of requests must be at least %d (2x num. instances)' % (instance_count * 2)
-        return
     if c < instance_count:
         print 'bees: error: the number of concurrent requests must be at least %d (num. instances)' % instance_count
         return
-    if n < c:
-        print 'bees: error: the number of concurrent requests (%d) must be at most the same as number of requests (%d)' % (c, n)
-        return
-
-    requests_per_instance = int(float(n) / instance_count)
     connections_per_instance = int(float(c) / instance_count)
+    if t > 0:
+        print 'Each of %i bees will fire for %s seconds, %s at a time.' % (instance_count, t, connections_per_instance)
+        requests_per_instance = 50000;
+    else:
+        if n < instance_count * 2:
+            print 'bees: error: the total number of requests must be at least %d (2x num. instances)' % (instance_count * 2)
+            return
+        if n < c:
+            print 'bees: error: the number of concurrent requests (%d) must be at most the same as number of requests (%d)' % (c, n)
+            return
 
-    print 'Each of %i bees will fire %s rounds, %s at a time.' % (instance_count, requests_per_instance, connections_per_instance)
+        requests_per_instance = int(float(n) / instance_count)
+
+        print 'Each of %i bees will fire %s rounds, %s at a time.' % (instance_count, requests_per_instance, connections_per_instance)
 
     params = []
 
@@ -467,6 +474,7 @@ def attack(url, n, c, **options):
             'url': url,
             'concurrent_requests': connections_per_instance,
             'num_requests': requests_per_instance,
+            'timelimit': t,
             'username': username,
             'key_name': key_name,
             'headers': headers,
