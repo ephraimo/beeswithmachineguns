@@ -27,106 +27,62 @@ THE SOFTWARE.
 import bees
 from urlparse import urlparse
 
-from optparse import OptionParser, OptionGroup
+from argparse import ArgumentParser
 
 def parse_options():
     """
     Handle the command line arguments for spinning up bees
     """
-    parser = OptionParser(usage="""
-bees COMMAND [options]
+    parser = ArgumentParser(description="""
+        Bees with Machine Guns.
+        A utility for arming (creating) many bees (small EC2 instances) to attack
+        (load test) targets (web applications).
+        """)
 
-Bees with Machine Guns
-
-A utility for arming (creating) many bees (small EC2 instances) to attack
-(load test) targets (web applications).
-
-commands:
-  up      Start a batch of load testing servers.
-  attack  Begin the attack on a specific url.
-  down    Shutdown and deactivate the load testing servers.
-  report  Report the status of the load testing servers.
-    """)
-
-    up_group = OptionGroup(parser, "up",
-        """In order to spin up new servers you will need to specify at least the -k command, which is the name of the EC2 keypair to use for creating and connecting to the new servers. The bees will expect to find a .pem file with this name in ~/.ssh/.""")
+    subparsers = parser.add_subparsers(title='commands', dest='command')
+    up_cmd = subparsers.add_parser("up", help='Start a batch of load testing servers.', description=
+        """Start a batch of load testing servers.
+        In order to spin up new servers you will need to specify at least the -k command, which is the name of the EC2 keypair to use for creating and connecting to the new servers. The bees will expect to find a .pem file with this name in ~/.ssh/.""")
 
     # Required
-    up_group.add_option('-k', '--key',  metavar="KEY",  nargs=1,
-                        action='store', dest='key', type='string',
-                        help="The ssh key pair name to use to connect to the new servers.")
+    up_cmd.add_argument('-k', '--key',  metavar="KEY", dest='key', required=True, help="The ssh key pair name to use to connect to the new servers.")
 
-    up_group.add_option('-s', '--servers', metavar="SERVERS", nargs=1,
-                        action='store', dest='servers', type='int', default=5,
-                        help="The number of servers to start (default: 5).")
-    up_group.add_option('-g', '--group', metavar="GROUP", nargs=1,
-                        action='store', dest='group', type='string', default='default',
-                        help="The security group(s) to run the instances under (default: default).")
-    up_group.add_option('-z', '--zone',  metavar="ZONE",  nargs=1,
-                        action='store', dest='zone', type='string', default='us-east-1d',
-                        help="The availability zone to start the instances in (default: us-east-1d).")
-    up_group.add_option('-i', '--instance',  metavar="INSTANCE",  nargs=1,
-                        action='store', dest='instance', type='string', default='ami-ff17fb96',
-                        help="The instance-id to use for each server from (default: ami-ff17fb96).")
-    up_group.add_option('-t', '--type',  metavar="TYPE",  nargs=1,
-                        action='store', dest='type', type='string', default='t1.micro',
-                        help="The instance-type to use for each server (default: t1.micro).")
-    up_group.add_option('-l', '--login',  metavar="LOGIN",  nargs=1,
-                        action='store', dest='login', type='string', default='newsapps',
-                        help="The ssh username name to use to connect to the new servers (default: newsapps).")
-    up_group.add_option('-v', '--subnet',  metavar="SUBNET",  nargs=1,
-                        action='store', dest='subnet', type='string', default=None,
-                        help="The vpc subnet id in which the instances should be launched. (default: None).")
+    up_cmd.add_argument('-s', '--servers', metavar="SERVERS", dest='servers', type=int, default=5, help="The number of servers to start (default: 5).")
+    up_cmd.add_argument('-g', '--group', metavar="GROUP", dest='group', default='default', help="The security group(s) to run the instances under (default: default).")
+    up_cmd.add_argument('-z', '--zone',  metavar="ZONE", dest='zone', default='us-east-1d', help="The availability zone to start the instances in (default: us-east-1d).")
+    up_cmd.add_argument('-i', '--instance',  metavar="INSTANCE", dest='instance', default='ami-ff17fb96', help="The instance-id to use for each server from (default: ami-ff17fb96).")
+    up_cmd.add_argument('-t', '--type',  metavar="TYPE", dest='type', default='t1.micro', help="The instance-type to use for each server (default: t1.micro).")
+    up_cmd.add_argument('-l', '--login',  metavar="LOGIN", dest='login', default='newsapps', help="The ssh username name to use to connect to the new servers (default: newsapps).")
+    up_cmd.add_argument('-v', '--subnet',  metavar="SUBNET", dest='subnet', default=None, help="The vpc subnet id in which the instances should be launched. (default: None).")
 
-    parser.add_option_group(up_group)
-
-    attack_group = OptionGroup(parser, "attack",
-            """Beginning an attack requires only that you specify the -u option with the URL you wish to target.""")
+    attack_cmd = subparsers.add_parser("attack", help='Begin the attack on a specific url.', description=
+        """Begin the attack on a specific url.
+        Beginning an attack requires only that you specify the -u option with the URL you wish to target.""")
 
     # Required
-    attack_group.add_option('-u', '--url', metavar="URL", nargs=1,
-                        action='store', dest='url', type='string',
-                        help="URL of the target to attack.")
-    attack_group.add_option('-p', '--post-file',  metavar="POST_FILE",  nargs=1,
-                        action='store', dest='post_file', type='string', default=False,
-                        help="The POST file to deliver with the bee's payload.")
-    attack_group.add_option('-m', '--mime-type',  metavar="MIME_TYPE",  nargs=1,
-                        action='store', dest='mime_type', type='string', default='text/plain',
-                        help="The MIME type to send with the request.")
-    attack_group.add_option('-n', '--number', metavar="NUMBER", nargs=1,
-                        action='store', dest='number', type='int', default=1000,
-                        help="The number of total connections to make to the target (default: 1000).")
-    attack_group.add_option('-c', '--concurrent', metavar="CONCURRENT", nargs=1,
-                        action='store', dest='concurrent', type='int', default=100,
-                        help="The number of concurrent connections to make to the target (default: 100).")
-    attack_group.add_option('-H', '--headers', metavar="HEADERS", nargs=1,
-                        action='store', dest='headers', type='string', default='',
+    attack_cmd.add_argument('-u', '--url', metavar="URL", dest='url', required=True, help="URL of the target to attack.")
+
+    attack_cmd.add_argument('-p', '--post-file',  metavar="POST_FILE", dest='post_file', default=False, help="The POST file to deliver with the bee's payload.")
+    attack_cmd.add_argument('-m', '--mime-type',  metavar="MIME_TYPE", dest='mime_type', default='text/plain', help="The MIME type to send with the request.")
+    attack_cmd.add_argument('-n', '--number', metavar="NUMBER", dest='number', type=int, default=1000, help="The number of total connections to make to the target (default: 1000).")
+    attack_cmd.add_argument('-c', '--concurrent', metavar="CONCURRENT", dest='concurrent', type=int, default=100, help="The number of concurrent connections to make to the target (default: 100).")
+    attack_cmd.add_argument('-H', '--headers', metavar="HEADERS", dest='headers', default='',
                         help="HTTP headers to send to the target to attack. Multiple headers should be separated by semi-colons, e.g header1:value1;header2:value2")
-    attack_group.add_option('-e', '--csv', metavar="FILENAME", nargs=1,
-                        action='store', dest='csv_filename', type='string', default='',
-                        help="Store the distribution of results in a csv file for all completed bees (default: '').")
+    attack_cmd.add_argument('-e', '--csv', metavar="FILENAME", dest='csv_filename', default='', help="Store the distribution of results in a csv file for all completed bees (default: '').")
 
-    parser.add_option_group(attack_group)
+    down_cmd = subparsers.add_parser("down", help='Shutdown and deactivate the load testing servers.', description='Shutdown and deactivate the load testing servers.')
+    report_cmd = subparsers.add_parser("report", help='Report the status of the load testing servers.', description='Report the status of the load testing servers.')
 
-    (options, args) = parser.parse_args()
+    options = parser.parse_args()
 
-    if len(args) <= 0:
-        parser.error('Please enter a command.')
-
-    command = args[0]
+    command = options.command
 
     if command == 'up':
-        if not options.key:
-            parser.error('To spin up new instances you need to specify a key-pair name with -k')
-
         if options.group == 'default':
             print 'New bees will use the "default" EC2 security group. Please note that port 22 (SSH) is not normally open on this group. You will need to use to the EC2 tools to open it before you will be able to attack.'
  
         bees.up(options.servers, options.group, options.zone, options.instance, options.type, options.login, options.key, options.subnet)
     elif command == 'attack':
-        if not options.url:
-            parser.error('To run an attack you need to specify a url with -u')
-
         parsed = urlparse(options.url)
         if not parsed.scheme:
             parsed = urlparse("http://" + options.url)
@@ -147,7 +103,6 @@ commands:
         bees.down()
     elif command == 'report':
         bees.report()
-
 
 def main():
     parse_options()
