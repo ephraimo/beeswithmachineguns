@@ -87,10 +87,9 @@ def _get_security_group_ids(connection, security_group_names, subnet):
                 if subnet == None:
                     if group.vpc_id == None:
                         ids.append(group.id)
-                    elif group.vpc_id != None:
-                        ids.append(group.id)
-		
-        return ids
+                elif group.vpc_id != None:
+                    ids.append(group.id)
+    return ids
 
 # Methods
 
