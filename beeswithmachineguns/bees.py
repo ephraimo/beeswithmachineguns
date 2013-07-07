@@ -338,27 +338,24 @@ def _print_results(results, params, csv_filename):
 
     complete_results = [r['failed_requests'] for r in complete_bees]
     total_failed_requests = sum(complete_results)
-    print '     Failed requests:\t\t%i' % total_failed_requests
-    
-    complete_results = [r['failed_connect'] for r in complete_bees]
-    total_failed_connect_requests = sum(complete_results)
-    print '          Connect:\t\t%i' % total_failed_connect_requests
-    
-    complete_results = [r['failed_receive'] for r in complete_bees]
-    total_failed_receive_requests = sum(complete_results)
-    print '          Receive:\t\t%i' % total_failed_receive_requests
-    
-    complete_results = [r['failed_length'] for r in complete_bees]
-    total_failed_length_requests = sum(complete_results)
-    print '          Length:\t\t%i' % total_failed_length_requests
-    
-    complete_results = [r['failed_exceptions'] for r in complete_bees]
-    total_failed_exception_requests = sum(complete_results)
-    print '          Exception:\t\t%i' % total_failed_exception_requests
-    
+    total_failed_percent = total_failed_requests/total_complete_requests*100
+    print '     Failed requests:\t\t%i (%.2f%%)' % (total_failed_requests, total_failed_percent)
+
+    if total_failed_requests > 0:
+        complete_results = [r['failed_connect'] for r in complete_bees]
+        total_failed_connect_requests = sum(complete_results)
+        complete_results = [r['failed_receive'] for r in complete_bees]
+        total_failed_receive_requests = sum(complete_results)
+        complete_results = [r['failed_length'] for r in complete_bees]
+        total_failed_length_requests = sum(complete_results)
+        complete_results = [r['failed_exceptions'] for r in complete_bees]
+        total_failed_exception_requests = sum(complete_results)
+        print '         (Connect: %i, Receive: %i, Length: %i, Exception: %i)' % (total_failed_connect_requests, total_failed_receive_requests, total_failed_length_requests, total_failed_exception_requests)
+
     non_200_results = [r['non_200_responses'] for r in complete_bees]
     total_non_200_results = sum(non_200_results)
-    print '     Non-200 Responses:\t\t%i' % total_non_200_results
+    if total_non_200_results > 0:
+        print '     Non-200 Responses:\t\t%i' % total_non_200_results
 
     complete_results = [r['requests_per_second'] for r in complete_bees]
     mean_requests = sum(complete_results)
@@ -388,13 +385,13 @@ def _print_results(results, params, csv_filename):
     print '     50%% responses faster than:\t%f [ms]' % request_time_cdf[49]
     print '     90%% responses faster than:\t%f [ms]' % request_time_cdf[89]
 
-    if mean_response < 500:
+    if mean_response < 500 and total_failed_percent < 0.1:
         print 'Mission Assessment: Target crushed bee offensive.'
-    elif mean_response < 1000:
+    elif mean_response < 1000 and total_failed_percent < 1:
         print 'Mission Assessment: Target successfully fended off the swarm.'
-    elif mean_response < 1500:
+    elif mean_response < 1500 and total_failed_percent < 5:
         print 'Mission Assessment: Target wounded, but operational.'
-    elif mean_response < 2000:
+    elif mean_response < 2000 and total_failed_percent < 10:
         print 'Mission Assessment: Target severely compromised.'
     else:
         print 'Mission Assessment: Swarm annihilated target.'
