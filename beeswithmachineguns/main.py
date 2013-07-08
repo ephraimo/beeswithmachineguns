@@ -69,6 +69,7 @@ def parse_options():
     attack_cmd.add_argument('-H', '--headers', metavar="HEADERS", dest='headers', default='',
                         help="HTTP headers to send to the target to attack. Multiple headers should be separated by semi-colons, e.g header1:value1;header2:value2")
     attack_cmd.add_argument('-e', '--csv', metavar="FILENAME", dest='csv_filename', default='', help="Store the distribution of results in a csv file for all completed bees (default: '').")
+    attack_cmd.add_argument('-g', '--gnuplot', metavar="FILENAME", dest='gnuplot_filename', default='', help="Write all measured values out as a 'gnuplot' or TSV (Tab separate values) file (default: '').")
     attack_cmd.add_argument('-t', '--timelimit', metavar="TIMELIMIT", dest='timelimit', type=int, default=0,
                         help="Maximum number of seconds to spend for benchmarking. This implies a -n 50000 internally. Use this to benchmark the server within a fixed total amount of time (default: no limit).")
 
@@ -97,6 +98,7 @@ def parse_options():
             post_file=options.post_file,
             mime_type=options.mime_type,
             csv_filename=options.csv_filename,
+            gnuplot_filename=options.gnuplot_filename,
         )
 
         bees.attack(options.url, options.number, options.concurrent, options.timelimit, **additional_options)

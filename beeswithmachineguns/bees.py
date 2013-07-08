@@ -224,6 +224,15 @@ def _attack(params):
             print 'Bee %i lost sight of the target (connection timed out creating csv_filename).' % params['i']
             return None
             
+        if params['gnuplot_filename']:
+            stdin, stdout, stderr = client.exec_command('tempfile -s .tsv')
+            params['tsv_filename'] = stdout.read().strip()
+            if params['tsv_filename']:
+                options += ' -g %(tsv_filename)s' % params
+            else:
+                print 'Bee %i lost sight of the target (connection timed out creating tsv_filename).' % params['i']
+                return None
+            
         if params['post_file']:
             pem_file_path=_get_pem_path(params['key_name'])
             os.system("scp -q -o 'StrictHostKeyChecking=no' -i %s %s %s@%s:/tmp/honeycomb" % (pem_file_path, params['post_file'], params['username'], params['instance_name']))
@@ -298,6 +307,17 @@ def _attack(params):
             print 'Bee %i lost sight of the target (connection timed out reading csv).' % params['i']
             return None
 
+        if params['gnuplot_filename']:
+            stdin, stdout, stderr = client.exec_command('cat %(tsv_filename)s' % params)
+            dr = csv.DictReader(stdout, delimiter='\t')
+            response['gnuplot_fields'] = dr.fieldnames
+            response['gnuplot'] = []
+            for row in dr:
+                response['gnuplot'].append(row)
+            if not response['gnuplot']:
+                print 'Bee %i lost sight of the target (connection timed out reading tsv).' % params['i']
+                return None
+
         print 'Bee %i is out of ammo.' % params['i']
 
         client.close()
@@ -306,7 +326,7 @@ def _attack(params):
     except socket.error, e:
         return e
 
-def _print_results(results, params, csv_filename):
+def _print_results(results, params, csv_filename, gnuplot_filename):
     """
     Print summarized load-testing results.
     """
@@ -408,6 +428,13 @@ def _print_results(results, params, csv_filename):
                 for r in results:
                     row.append(r['request_time_cdf'][i]["Time in ms"])
                 writer.writerow(row)
+
+    if gnuplot_filename:
+        with open(gnuplot_filename, 'w') as stream:
+            writer = csv.DictWriter(stream, delimiter='\t', fieldnames=results[0]['gnuplot_fields'])
+            writer.writeheader()
+            for r in results:
+                writer.writerows(r['gnuplot'])
     
 def attack(url, n, c, t, **options):
     """
@@ -416,6 +443,7 @@ def attack(url, n, c, t, **options):
     username, key_name, zone, instance_ids = _read_server_list()
     headers = options.get('headers', '')
     csv_filename = options.get("csv_filename", '')
+    gnuplot_filename = options.get("gnuplot_filename", '')
 
     if csv_filename:
         try:
@@ -423,6 +451,12 @@ def attack(url, n, c, t, **options):
         except IOError, e:
             raise IOError("Specified csv_filename='%s' is not writable. Check permissions or specify a different filename and try again." % csv_filename)
     
+    if gnuplot_filename:
+        try:
+            stream = open(gnuplot_filename, 'w')
+        except IOError, e:
+            raise IOError("Specified gnuplot_filename='%s' is not writable. Check permissions or specify a different filename and try again." % gnuplot_filename)
+
     if not instance_ids:
         print 'No bees are ready to attack.'
         return
@@ -477,6 +511,7 @@ def attack(url, n, c, t, **options):
             'headers': headers,
             'post_file': options.get('post_file'),
             'mime_type': options.get('mime_type', ''),
+            'gnuplot_filename': gnuplot_filename,
         })
 
     print 'Stinging URL so it will be cached for the attack.'
@@ -496,6 +531,6 @@ def attack(url, n, c, t, **options):
 
     print 'Offensive complete.'
 
-    _print_results(results, params, csv_filename)
+    _print_results(results, params, csv_filename, gnuplot_filename)
 
     print 'The swarm is awaiting new orders.'
