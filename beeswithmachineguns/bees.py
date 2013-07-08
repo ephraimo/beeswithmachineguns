@@ -352,24 +352,24 @@ def _print_results(results, params, csv_filename, gnuplot_filename):
         print '     No bees completed the mission. Apparently your bees are peace-loving hippies.'
         return
 
-    complete_results = [r['complete_requests'] for r in complete_bees]
-    total_complete_requests = sum(complete_results)
+    complete_requests = [r['complete_requests'] for r in complete_bees]
+    total_complete_requests = sum(complete_requests)
     print '     Complete requests:\t\t%i' % total_complete_requests
 
-    complete_results = [r['failed_requests'] for r in complete_bees]
-    total_failed_requests = sum(complete_results)
-    total_failed_percent = total_failed_requests/total_complete_requests*100
-    print '     Failed requests:\t\t%i (%.2f%%)' % (total_failed_requests, total_failed_percent)
+    failed_requests = [r['failed_requests'] for r in complete_bees]
+    total_failed_requests = sum(failed_requests)
+    total_failed_percent = total_failed_requests/total_complete_requests
+    print '     Failed requests:\t\t{:,} ({:.2%})'.format(int(total_failed_requests), total_failed_percent)
 
     if total_failed_requests > 0:
-        complete_results = [r['failed_connect'] for r in complete_bees]
-        total_failed_connect_requests = sum(complete_results)
-        complete_results = [r['failed_receive'] for r in complete_bees]
-        total_failed_receive_requests = sum(complete_results)
-        complete_results = [r['failed_length'] for r in complete_bees]
-        total_failed_length_requests = sum(complete_results)
-        complete_results = [r['failed_exceptions'] for r in complete_bees]
-        total_failed_exception_requests = sum(complete_results)
+        failed_connect_requests = [r['failed_connect'] for r in complete_bees]
+        total_failed_connect_requests = sum(failed_connect_requests)
+        failed_receive_requests = [r['failed_receive'] for r in complete_bees]
+        total_failed_receive_requests = sum(failed_receive_requests)
+        failed_length_requests = [r['failed_length'] for r in complete_bees]
+        total_failed_length_requests = sum(failed_length_requests)
+        failed_exceptions_requests = [r['failed_exceptions'] for r in complete_bees]
+        total_failed_exception_requests = sum(failed_exceptions_requests)
         print '         (Connect: %i, Receive: %i, Length: %i, Exception: %i)' % (total_failed_connect_requests, total_failed_receive_requests, total_failed_length_requests, total_failed_exception_requests)
 
     non_200_results = [r['non_200_responses'] for r in complete_bees]
@@ -377,12 +377,12 @@ def _print_results(results, params, csv_filename, gnuplot_filename):
     if total_non_200_results > 0:
         print '     Non-200 Responses:\t\t%i' % total_non_200_results
 
-    complete_results = [r['requests_per_second'] for r in complete_bees]
-    mean_requests = sum(complete_results)
+    requests_per_second = [r['requests_per_second'] for r in complete_bees]
+    mean_requests = sum(requests_per_second)
     print '     Requests per second:\t%f [#/sec]' % mean_requests
 
-    complete_results = [r['ms_per_request'] for r in complete_bees]
-    mean_response = sum(complete_results) / num_complete_bees
+    ms_per_request = [r['ms_per_request'] for r in complete_bees]
+    mean_response = sum(ms_per_request) / num_complete_bees
     print '     Time per request:\t\t%f [ms] (mean of bees)' % mean_response
 
     # Recalculate the global cdf based on the csv files collected from
