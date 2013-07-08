@@ -72,6 +72,7 @@ def parse_options():
     attack_cmd.add_argument('-g', '--gnuplot', metavar="FILENAME", dest='gnuplot_filename', default='', help="Write all measured values out as a 'gnuplot' or TSV (Tab separate values) file (default: '').")
     attack_cmd.add_argument('-t', '--timelimit', metavar="TIMELIMIT", dest='timelimit', type=int, default=0,
                         help="Maximum number of seconds to spend for benchmarking. This implies a -n 50000 internally. Use this to benchmark the server within a fixed total amount of time (default: no limit).")
+    attack_cmd.add_argument('--non-200-is-failure', dest='non_200_is_failure', action='store_true', default=False, help="Treat non-200 responses as failures (treated as success by default).")
 
     down_cmd = subparsers.add_parser("down", help='Shutdown and deactivate the load testing servers.', description='Shutdown and deactivate the load testing servers.')
     report_cmd = subparsers.add_parser("report", help='Report the status of the load testing servers.', description='Report the status of the load testing servers.')
@@ -99,6 +100,7 @@ def parse_options():
             mime_type=options.mime_type,
             csv_filename=options.csv_filename,
             gnuplot_filename=options.gnuplot_filename,
+            non_200_is_failure=options.non_200_is_failure,
         )
 
         bees.attack(options.url, options.number, options.concurrent, options.timelimit, **additional_options)

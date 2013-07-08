@@ -257,6 +257,7 @@ def _attack(params):
         requests_per_second_search = re.search('Requests\ per\ second:\s+([0-9.]+)\ \[#\/sec\]\ \(mean\)', ab_results)
         failed_requests = re.search('Failed\ requests:\s+([0-9.]+)', ab_results)
         complete_requests_search = re.search('Complete\ requests:\s+([0-9]+)', ab_results)
+        time_taken_search = re.search('Time\ taken\ for\ tests:\s+([0-9]+)', ab_results)
         non_200_responses_search = re.search('Non\-2xx\ responses:\s+([0-9]+)', ab_results)
         
         """
@@ -272,6 +273,7 @@ def _attack(params):
         response['requests_per_second'] = float(requests_per_second_search.group(1))
         response['failed_requests'] = float(failed_requests.group(1))
         response['complete_requests'] = float(complete_requests_search.group(1))
+        response['time_taken'] = float(time_taken_search.group(1))
         
         if failed_connect_search is None:
             response['failed_connect'] = 0
@@ -326,7 +328,7 @@ def _attack(params):
     except socket.error, e:
         return e
 
-def _print_results(results, params, csv_filename, gnuplot_filename):
+def _print_results(results, params, csv_filename, gnuplot_filename, non_200_is_failure):
     """
     Print summarized load-testing results.
     """
@@ -356,7 +358,11 @@ def _print_results(results, params, csv_filename, gnuplot_filename):
     total_complete_requests = sum(complete_requests)
     print '     Complete requests:\t\t%i' % total_complete_requests
 
-    failed_requests = [r['failed_requests'] for r in complete_bees]
+    if non_200_is_failure:
+        failed_requests = [r['failed_requests']+r['non_200_responses'] for r in complete_bees]
+    else:
+        failed_requests = [r['failed_requests'] for r in complete_bees]
+
     total_failed_requests = sum(failed_requests)
     total_failed_percent = total_failed_requests/total_complete_requests
     print '     Failed requests:\t\t{:,} ({:.2%})'.format(int(total_failed_requests), total_failed_percent)
@@ -380,6 +386,13 @@ def _print_results(results, params, csv_filename, gnuplot_filename):
     requests_per_second = [r['requests_per_second'] for r in complete_bees]
     mean_requests = sum(requests_per_second)
     print '     Requests per second:\t%f [#/sec]' % mean_requests
+
+    if non_200_is_failure:
+        successful_requests_per_second = [(r['complete_requests']-r['failed_requests']-r['non_200_responses'])/r['time_taken'] for r in complete_bees]
+    else:
+        successful_requests_per_second = [(r['complete_requests']-r['failed_requests'])/r['time_taken'] for r in complete_bees]
+    successful_mean_requests = sum(successful_requests_per_second)
+    print '     Successful Requests per second:\t%f [#/sec]' % successful_mean_requests
 
     ms_per_request = [r['ms_per_request'] for r in complete_bees]
     mean_response = sum(ms_per_request) / num_complete_bees
@@ -444,6 +457,7 @@ def attack(url, n, c, t, **options):
     headers = options.get('headers', '')
     csv_filename = options.get("csv_filename", '')
     gnuplot_filename = options.get("gnuplot_filename", '')
+    non_200_is_failure = options.get("non_200_is_failure", False)
 
     if csv_filename:
         try:
@@ -531,6 +545,6 @@ def attack(url, n, c, t, **options):
 
     print 'Offensive complete.'
 
-    _print_results(results, params, csv_filename, gnuplot_filename)
+    _print_results(results, params, csv_filename, gnuplot_filename, non_200_is_failure)
 
     print 'The swarm is awaiting new orders.'
