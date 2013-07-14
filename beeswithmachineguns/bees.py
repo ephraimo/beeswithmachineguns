@@ -367,6 +367,9 @@ def _print_results(results, params, csv_filename, gnuplot_filename, non_200_is_f
     total_failed_percent = total_failed_requests/total_complete_requests
     print '     Failed requests:\t\t{:,} ({:.2%})'.format(int(total_failed_requests), total_failed_percent)
 
+    non_200_results = [r['non_200_responses'] for r in complete_bees]
+    total_non_200_results = sum(non_200_results)
+
     if total_failed_requests > 0:
         failed_connect_requests = [r['failed_connect'] for r in complete_bees]
         total_failed_connect_requests = sum(failed_connect_requests)
@@ -376,11 +379,14 @@ def _print_results(results, params, csv_filename, gnuplot_filename, non_200_is_f
         total_failed_length_requests = sum(failed_length_requests)
         failed_exceptions_requests = [r['failed_exceptions'] for r in complete_bees]
         total_failed_exception_requests = sum(failed_exceptions_requests)
-        print '         (Connect: %i, Receive: %i, Length: %i, Exception: %i)' % (total_failed_connect_requests, total_failed_receive_requests, total_failed_length_requests, total_failed_exception_requests)
+        if non_200_is_failure:
+            print '         (Connect: %i, Receive: %i, Length: %i, Exception: %i, Non-200: %i)' % \
+                (total_failed_connect_requests, total_failed_receive_requests, total_failed_length_requests, total_failed_exception_requests, total_non_200_results)
+        else:
+            print '         (Connect: %i, Receive: %i, Length: %i, Exception: %i)' % \
+                (total_failed_connect_requests, total_failed_receive_requests, total_failed_length_requests, total_failed_exception_requests)
 
-    non_200_results = [r['non_200_responses'] for r in complete_bees]
-    total_non_200_results = sum(non_200_results)
-    if total_non_200_results > 0:
+    if (not non_200_is_failure) and total_non_200_results > 0:
         print '     Non-200 Responses:\t\t%i' % total_non_200_results
 
     requests_per_second = [r['requests_per_second'] for r in complete_bees]
@@ -418,13 +424,13 @@ def _print_results(results, params, csv_filename, gnuplot_filename, non_200_is_f
     print '     50%% responses faster than:\t%f [ms]' % request_time_cdf[49]
     print '     90%% responses faster than:\t%f [ms]' % request_time_cdf[89]
 
-    if mean_response < 500 and total_failed_percent < 0.1:
+    if mean_response < 500 and total_failed_percent < 0.001:
         print 'Mission Assessment: Target crushed bee offensive.'
-    elif mean_response < 1000 and total_failed_percent < 1:
+    elif mean_response < 1000 and total_failed_percent < 0.01:
         print 'Mission Assessment: Target successfully fended off the swarm.'
-    elif mean_response < 1500 and total_failed_percent < 5:
+    elif mean_response < 1500 and total_failed_percent < 0.05:
         print 'Mission Assessment: Target wounded, but operational.'
-    elif mean_response < 2000 and total_failed_percent < 10:
+    elif mean_response < 2000 and total_failed_percent < 0.10:
         print 'Mission Assessment: Target severely compromised.'
     else:
         print 'Mission Assessment: Swarm annihilated target.'
