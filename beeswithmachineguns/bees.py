@@ -240,7 +240,7 @@ def _attack(params):
 
         params['options'] = options
         if params['timelimit'] > 0:
-            benchmark_command = 'ab -r -t %(timelimit)s -c %(concurrent_requests)s -C "sessionid=NotARealSessionID" %(options)s "%(url)s"' % params
+            benchmark_command = 'ab -r -t %(timelimit)s -n 5000000 -c %(concurrent_requests)s -C "sessionid=NotARealSessionID" %(options)s "%(url)s"' % params
         else:
             benchmark_command = 'ab -r -n %(num_requests)s -c %(concurrent_requests)s -C "sessionid=NotARealSessionID" %(options)s "%(url)s"' % params
         stdin, stdout, stderr = client.exec_command(benchmark_command)
