@@ -25,6 +25,8 @@ THE SOFTWARE.
 """
 
 from multiprocessing import Pool
+from subprocess import check_output
+from collections import OrderedDict
 import os
 import re
 import socket
@@ -328,7 +330,7 @@ def _attack(params):
     except socket.error, e:
         return e
 
-def _print_results(results, params, csv_filename, gnuplot_filename, non_200_is_failure):
+def _print_results(results, params, csv_filename, gnuplot_filename, stats_filename, existing_stats_file, testname, non_200_is_failure):
     """
     Print summarized load-testing results.
     """
@@ -454,6 +456,37 @@ def _print_results(results, params, csv_filename, gnuplot_filename, non_200_is_f
             writer.writeheader()
             for r in results:
                 writer.writerows(r['gnuplot'])
+
+    if stats_filename:
+        csvstat_results = check_output(["csvstat", "-tc", "ttime", gnuplot_filename])
+        min_search = re.search('\sMin:\s+([0-9]+)', csvstat_results)
+        max_search = re.search('\sMax:\s+([0-9]+)', csvstat_results)
+        mean_search = re.search('\sMean:\s+([0-9.]+)', csvstat_results)
+        median_search = re.search('\sMedian:\s+([0-9.]+)', csvstat_results)
+        stdev_search = re.search('\sStandard\ Deviation:\s+([0-9.]+)', csvstat_results)
+
+        stats = OrderedDict()
+        stats['Name'] = testname
+        stats['Total'] = int(total_complete_requests)
+        stats['Success'] = int(total_complete_requests-total_failed_requests)
+        stats['% Success'] = stats['Success']/total_complete_requests
+        stats['Error'] = int(total_failed_requests)
+        stats['% Error'] = total_failed_percent
+        stats['TotalPerSecond'] = mean_requests
+        stats['SuccessPerSecond'] = successful_mean_requests
+        stats['Min'] = int(min_search.group(1))
+        stats['Max'] = int(max_search.group(1))
+        stats['Mean'] = float(mean_search.group(1))
+        stats['Median'] = float(median_search.group(1))
+        stats['StdDev'] = float(stdev_search.group(1))
+        for i in range(5, 100, 5):
+            stats['P' + str(i)] = request_time_cdf[i]
+
+        with open(stats_filename, 'a') as stream:
+            writer = csv.DictWriter(stream, fieldnames=stats)
+            if not existing_stats_file:
+                writer.writeheader()
+            writer.writerow(stats)
     
 def attack(url, n, c, t, **options):
     """
@@ -463,6 +496,9 @@ def attack(url, n, c, t, **options):
     headers = options.get('headers', '')
     csv_filename = options.get("csv_filename", '')
     gnuplot_filename = options.get("gnuplot_filename", '')
+    stats_filename = options.get("stats_filename", '')
+    existing_stats_file = False
+    testname = options.get("testname", '')
     non_200_is_failure = options.get("non_200_is_failure", False)
 
     if csv_filename:
@@ -471,6 +507,15 @@ def attack(url, n, c, t, **options):
         except IOError, e:
             raise IOError("Specified csv_filename='%s' is not writable. Check permissions or specify a different filename and try again." % csv_filename)
     
+    if stats_filename:
+        existing_stats_file = os.path.isfile(stats_filename)
+        try:
+            stream = open(stats_filename, 'a')
+        except IOError, e:
+            raise IOError("Specified stats_filename='%s' is not writable. Check permissions or specify a different filename and try again." % stats_filename)
+        if not gnuplot_filename:
+            gnuplot_filename = os.path.splitext(stats_filename)[0] + "." + testname + ".tsv"
+
     if gnuplot_filename:
         try:
             stream = open(gnuplot_filename, 'w')
@@ -551,6 +596,6 @@ def attack(url, n, c, t, **options):
 
     print 'Offensive complete.'
 
-    _print_results(results, params, csv_filename, gnuplot_filename, non_200_is_failure)
+    _print_results(results, params, csv_filename, gnuplot_filename, stats_filename, existing_stats_file, testname, non_200_is_failure)
 
     print 'The swarm is awaiting new orders.'

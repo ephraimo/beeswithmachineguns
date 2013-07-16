@@ -72,6 +72,9 @@ def parse_options():
     attack_cmd.add_argument('-g', '--gnuplot', metavar="FILENAME", dest='gnuplot_filename', default='', help="Write all measured values out as a 'gnuplot' or TSV (Tab separate values) file (default: '').")
     attack_cmd.add_argument('-t', '--timelimit', metavar="TIMELIMIT", dest='timelimit', type=int, default=0,
                         help="Maximum number of seconds to spend for benchmarking. This implies a -n 50000 internally. Use this to benchmark the server within a fixed total amount of time (default: no limit).")
+    attack_cmd.add_argument('--stats-file', metavar="FILENAME", dest='stats_filename', default='',
+                        help="Store detailed graph ready stats across multiple tests in a csv file. Will create gnuplot files even if the -g/--gnuplot wasn't specified (default: '').")
+    attack_cmd.add_argument('--testname', metavar="NAME", dest='testname', default='unnamed', help="Name of current test. To be used in conjunction with --stats-file (default: 'unnamed').")
     attack_cmd.add_argument('--non-200-is-failure', dest='non_200_is_failure', action='store_true', default=False, help="Treat non-200 responses as failures (treated as success by default).")
 
     down_cmd = subparsers.add_parser("down", help='Shutdown and deactivate the load testing servers.', description='Shutdown and deactivate the load testing servers.')
@@ -100,6 +103,8 @@ def parse_options():
             mime_type=options.mime_type,
             csv_filename=options.csv_filename,
             gnuplot_filename=options.gnuplot_filename,
+            stats_filename=options.stats_filename,
+            testname=options.testname,
             non_200_is_failure=options.non_200_is_failure,
         )
 
