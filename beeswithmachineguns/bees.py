@@ -25,8 +25,9 @@ THE SOFTWARE.
 """
 
 from multiprocessing import Pool
-from subprocess import check_output
+from subprocess import check_output, call
 from collections import OrderedDict
+from tempfile import NamedTemporaryFile
 import os
 import re
 import socket
@@ -218,7 +219,7 @@ def _attack(params):
             for h in params['headers'].split(';'):
                 options += ' -H "%s"' % h
 
-        stdin, stdout, stderr = client.exec_command('tempfile -s .csv')
+        stdin, stdout, stderr = client.exec_command('mktemp --suffix=.csv')
         params['csv_filename'] = stdout.read().strip()
         if params['csv_filename']:
             options += ' -e %(csv_filename)s' % params
@@ -227,7 +228,7 @@ def _attack(params):
             return None
             
         if params['gnuplot_filename']:
-            stdin, stdout, stderr = client.exec_command('tempfile -s .tsv')
+            stdin, stdout, stderr = client.exec_command('mktemp --suffix=.tsv')
             params['tsv_filename'] = stdout.read().strip()
             if params['tsv_filename']:
                 options += ' -g %(tsv_filename)s' % params
@@ -312,15 +313,11 @@ def _attack(params):
             return None
 
         if params['gnuplot_filename']:
-            stdin, stdout, stderr = client.exec_command('cat %(tsv_filename)s' % params)
-            dr = csv.DictReader(stdout, delimiter='\t')
-            response['gnuplot_fields'] = dr.fieldnames
-            response['gnuplot'] = []
-            for row in dr:
-                response['gnuplot'].append(row)
-            if not response['gnuplot']:
-                print 'Bee %i lost sight of the target (connection timed out reading tsv).' % params['i']
-                return None
+            f = NamedTemporaryFile(suffix=".tsv", delete=False)
+            response['tsv_filename'] = f.name
+            f.close()
+            sftp = client.open_sftp()
+            sftp.get(params['tsv_filename'], response['tsv_filename'])
 
         print 'Bee %i is out of ammo.' % params['i']
 
@@ -451,11 +448,12 @@ def _print_results(results, params, csv_filename, gnuplot_filename, stats_filena
                 writer.writerow(row)
 
     if gnuplot_filename:
-        with open(gnuplot_filename, 'w') as stream:
-            writer = csv.DictWriter(stream, delimiter='\t', fieldnames=results[0]['gnuplot_fields'])
-            writer.writeheader()
-            for r in results:
-                writer.writerows(r['gnuplot'])
+        files = [r['tsv_filename'] for r in results]
+        # using csvkit utils to join the tsv files from all of the bees, adding a column to show whic bee produced each line. using sort because of performance problems with csvsort.
+        command = "csvstack -t -n bee -g " + ",".join(["%(i)s" % p for p in complete_bees_params]) + " " + " ".join(files) + " | csvcut -c 2-7,1 | sort -nk 5 -t ',' | sed 's/,/\t/g' > " + gnuplot_filename
+        call(command, shell=True)
+        # removing temp files
+        call(["rm"] + files)
 
     if stats_filename:
         csvstat_results = check_output(["csvstat", "-tc", "ttime", gnuplot_filename])
