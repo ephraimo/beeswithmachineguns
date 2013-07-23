@@ -207,10 +207,17 @@ def _attack(params):
     try:
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+        if params['gnuplot_filename']:
+            use_compression = True
+        else:
+            use_compression = False
+
         client.connect(
             params['instance_name'],
             username=params['username'],
-            key_filename=_get_pem_path(params['key_name']))
+            key_filename=_get_pem_path(params['key_name']),
+            compress=use_compression)
 
         print 'Bee %i is firing her machine gun. Bang bang!' % params['i']
 
@@ -303,6 +310,8 @@ def _attack(params):
         else:
             response['non_200_responses'] = float(non_200_responses_search.group(1))
 
+        print 'Bee %i is out of ammo. She is collecting her pollen and flying back to the hive. This may take a while if she has a heavy load and/or the hive is far away...' % params['i']
+
         stdin, stdout, stderr = client.exec_command('cat %(csv_filename)s' % params)
         response['request_time_cdf'] = []
         for row in csv.DictReader(stdout):
@@ -318,8 +327,6 @@ def _attack(params):
             f.close()
             sftp = client.open_sftp()
             sftp.get(params['tsv_filename'], response['tsv_filename'])
-
-        print 'Bee %i is out of ammo.' % params['i']
 
         client.close()
 
@@ -448,7 +455,8 @@ def _print_results(results, params, csv_filename, gnuplot_filename, stats_filena
                 writer.writerow(row)
 
     if gnuplot_filename:
-        files = [r['tsv_filename'] for r in results]
+        print 'Joining gnuplot files from all bees.'
+        files = [r['tsv_filename'] for r in results if r is not None]
         # using csvkit utils to join the tsv files from all of the bees, adding a column to show whic bee produced each line. using sort because of performance problems with csvsort.
         command = "csvstack -t -n bee -g " + ",".join(["%(i)s" % p for p in complete_bees_params]) + " " + " ".join(files) + " | csvcut -c 2-7,1 | sort -nk 5 -t ',' | sed 's/,/\t/g' > " + gnuplot_filename
         call(command, shell=True)
@@ -456,6 +464,7 @@ def _print_results(results, params, csv_filename, gnuplot_filename, stats_filena
         call(["rm"] + files)
 
     if stats_filename:
+        print 'Calculating statistics.'
         csvstat_results = check_output(["csvstat", "-tc", "ttime", gnuplot_filename])
         min_search = re.search('\sMin:\s+([0-9]+)', csvstat_results)
         max_search = re.search('\sMax:\s+([0-9]+)', csvstat_results)
