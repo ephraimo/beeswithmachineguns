@@ -60,7 +60,7 @@ def parse_options():
         Beginning an attack requires only that you specify the -u option with the URL you wish to target.""")
 
     # Required
-    attack_cmd.add_argument('-u', '--url', metavar="URL", dest='url', required=True, help="URL of the target to attack.")
+    attack_cmd.add_argument('-u', '--url', metavar="URL", dest='urls', action='append', required=True, help="URL(s) of the target to attack.")
 
     attack_cmd.add_argument('-p', '--post-file',  metavar="POST_FILE", dest='post_file', default=False, help="The POST file to deliver with the bee's payload.")
     attack_cmd.add_argument('-m', '--mime-type',  metavar="MIME_TYPE", dest='mime_type', default='text/plain', help="The MIME type to send with the request.")
@@ -90,12 +90,13 @@ def parse_options():
  
         bees.up(options.servers, options.group, options.zone, options.instance, options.type, options.login, options.key, options.subnet)
     elif command == 'attack':
-        parsed = urlparse(options.url)
-        if not parsed.scheme:
-            parsed = urlparse("http://" + options.url)
+        for url in options.urls:
+            parsed = urlparse(url)
+            if not parsed.scheme:
+                parsed = urlparse("http://" + url)
 
-        if not parsed.path:
-            parser.error('It appears your URL lacks a trailing slash, this will disorient the bees. Please try again with a trailing slash.')
+            if not parsed.path:
+                parser.error('It appears your URL lacks a trailing slash, this will disorient the bees. Please try again with a trailing slash.')
 
         additional_options = dict(
             headers=options.headers,
@@ -108,7 +109,7 @@ def parse_options():
             non_200_is_failure=options.non_200_is_failure,
         )
 
-        bees.attack(options.url, options.number, options.concurrent, options.timelimit, **additional_options)
+        bees.attack(options.urls, options.number, options.concurrent, options.timelimit, **additional_options)
 
     elif command == 'down':
         bees.down()

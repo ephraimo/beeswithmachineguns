@@ -227,7 +227,7 @@ def _attack(params):
             key_filename=_get_pem_path(params['key_name']),
             compress=use_compression)
 
-        print 'Bee %i is firing her machine gun. Bang bang!' % params['i']
+        print 'Bee %i is firing her machine gun at (%s). Bang bang!' % (params['i'], params['url'])
 
         options = ''
         if params['headers'] is not '':
@@ -503,7 +503,7 @@ def _print_results(results, params, csv_filename, gnuplot_filename, stats_filena
                 writer.writeheader()
             writer.writerow(stats)
     
-def attack(url, n, c, t, **options):
+def attack(urls, n, c, t, **options):
     """
     Test the root url of this site.
     """
@@ -560,6 +560,11 @@ def attack(url, n, c, t, **options):
         print 'bees: error: the number of concurrent requests must be at least %d (num. instances)' % instance_count
         return
     connections_per_instance = int(float(c) / instance_count)
+    if instance_count < len(urls):
+        print "bees: error: the number of urls (%d) can't exceed the number of bees (%d)" % (len(urls), instance_count)
+        return
+    if instance_count % len(urls):
+       print "bees: warning: the load will not be evenly distributed between the urls because they can't be evenly divided between the bees [(%d bees) mod (%d urls) != 0]" % (instance_count, len(urls))
     if t > 0:
         print 'Each of %i bees will fire for %s seconds, %s at a time.' % (instance_count, t, connections_per_instance)
         requests_per_instance = 50000;
@@ -582,7 +587,7 @@ def attack(url, n, c, t, **options):
             'i': i,
             'instance_id': instance.id,
             'instance_name': instance.public_dns_name,
-            'url': url,
+            'url': urls[i % len(urls)],
             'concurrent_requests': connections_per_instance,
             'num_requests': requests_per_instance,
             'timelimit': t,
@@ -594,14 +599,15 @@ def attack(url, n, c, t, **options):
             'gnuplot_filename': gnuplot_filename,
         })
 
-    print 'Stinging URL so it will be cached for the attack.'
+    print 'Stinging URLs so they will be cached for the attack.'
 
     # Ping url so it will be cached for testing
     dict_headers = {}
     if headers is not '':
         dict_headers = headers = dict(h.split(':') for h in headers.split(';'))
-    request = urllib2.Request(url, headers=dict_headers)
-    urllib2.urlopen(request).read()
+    for url in urls:
+        request = urllib2.Request(url, headers=dict_headers)
+        urllib2.urlopen(request).read()
 
     print 'Organizing the swarm.'
 
