@@ -22,8 +22,8 @@ set multiplot layout 2, 1 title filename font "Bold,20"
 # Draw gridlines oriented on the y axis
 set grid y
 # Label the x-axis
-#set xlabel 'Iteration'
-set xlabel 'Concurrent Requests'
+set xlabel 'Iteration'
+#set xlabel 'Concurrent Requests'
 # Tell gnuplot to use commas as the delimiter instead of spaces (default)
 set datafile separator ','
 set key autotitle columnhead
@@ -42,17 +42,18 @@ set format "%'g"
 set format y2 "%g %%"
 set yrange [0:]
 set y2range [0:10]
+#set boxwidth 0.5
+#set style fill solid
 
 # Plot the data
-plot filename.'.csv' using 1:7 with lines lt 5 lw 3 axes x1y1, \
-             ''      using 1:($7-($7-$8)/2) with lines lt 2 lw 3 axes x1y1, \
-             ''      using 1:($6*50) with lines lt 1 lw 2 axes x1y2
+plot filename.'.csv' using 1:8:xtic(2) with lines lt 5 lw 3 axes x1y1, \
+             ''      using 1:($8-($8-$9)/2) with lines lt 2 lw 3 axes x1y1, \
+             ''      using 1:($7*50) with lines lt 1 lw 3 axes x1y2
 # the creative arithmetic above is done in order to overcome a bug in ab in which it counts each error twice, and since successful hits are calculated as total-bad it also has to be fixed.
-#             ''      using 1:8 with lines lt 2 lw 3 axes x1y1, \
-#             ''      using 1:($6*100) with lines lt 1 lw 3 axes x1y2
-unset y2tics 
+unset y2tics
 unset y2label
 set yrange [*:*]
+#unset boxwidth
 
 #
 # second graph
@@ -65,6 +66,6 @@ set bars 4.0
 set style fill solid
 
 # Plot the data
-plot filename.'.csv' using 1:15:9:32:31 with candlesticks lt 2 title 'Min/P10/Med/P90/P95' whiskerbars 0.6, \
-          ''         using 1:12:12:12:12 with candlesticks lt -1 notitle,\
-          ''         using 1:11 with lines lt -1 lw 3
+plot filename.'.csv' using 1:16:10:33:32:xtic(2) with candlesticks lt 2 title 'Min/P10/Med/P90/P95' whiskerbars 0.6, \
+          ''         using 1:13:13:13:13 with candlesticks lt -1 notitle,\
+          ''         using 1:12 with lines lt -1 lw 3

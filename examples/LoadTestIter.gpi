@@ -21,9 +21,10 @@ set multiplot layout 2, 1 title filename font "Bold,20"
 
 # Draw gridlines oriented on the y axis
 set grid y
+set xtics 1
 # Label the x-axis
-#set xlabel 'Iteration'
-set xlabel 'Concurrent Requests'
+set xlabel 'Iteration'
+#set xlabel 'Concurrent Requests'
 # Tell gnuplot to use commas as the delimiter instead of spaces (default)
 set datafile separator ','
 set key autotitle columnhead
@@ -46,7 +47,7 @@ set y2range [0:10]
 # Plot the data
 plot filename.'.csv' using 1:7 with lines lt 5 lw 3 axes x1y1, \
              ''      using 1:($7-($7-$8)/2) with lines lt 2 lw 3 axes x1y1, \
-             ''      using 1:($6*50) with lines lt 1 lw 2 axes x1y2
+             ''      using 1:($6*50) with lines lt 1 lw 3 axes x1y2
 # the creative arithmetic above is done in order to overcome a bug in ab in which it counts each error twice, and since successful hits are calculated as total-bad it also has to be fixed.
 #             ''      using 1:8 with lines lt 2 lw 3 axes x1y1, \
 #             ''      using 1:($6*100) with lines lt 1 lw 3 axes x1y2

@@ -25,9 +25,10 @@ THE SOFTWARE.
 """
 
 from multiprocessing import Pool
-from subprocess import check_output, call
+from subprocess import check_output, call, CalledProcessError
 from collections import OrderedDict
 from tempfile import NamedTemporaryFile
+#from uuid import uuid4
 import os
 import re
 import socket
@@ -227,7 +228,7 @@ def _attack(params):
             key_filename=_get_pem_path(params['key_name']),
             compress=use_compression)
 
-        print 'Bee %i is firing her machine gun at (%s). Bang bang!' % (params['i'], params['url'])
+        print 'Bee %i is firing her machine gun (post file: %s) at (%s). Bang bang!' % (params['i'], params['post_file'], params['url'])
 
         options = ''
         if params['headers'] is not '':
@@ -254,22 +255,32 @@ def _attack(params):
         if params['post_file']:
             pem_file_path=_get_pem_path(params['key_name'])
             os.system("scp -q -o 'StrictHostKeyChecking=no' -i %s %s %s@%s:/tmp/honeycomb" % (pem_file_path, params['post_file'], params['username'], params['instance_name']))
-            options += ' -k -T "%(mime_type)s; charset=UTF-8" -p /tmp/honeycomb' % params
+            options += ' -T "%(mime_type)s; charset=UTF-8" -p /tmp/honeycomb' % params
+            #random_command = "sed -i 's/RANDOM/%s/' /tmp/honeycomb && cat /tmp/honeycomb" % str(uuid4())
+            #stdin, stdout, stderr = client.exec_command(random_command)
+            #print 'posting file: %s' % stdout.read()
+            #options += ' -k -T "%(mime_type)s; charset=UTF-8" -p /tmp/honeycomb' % params
 
         params['options'] = options
         if params['timelimit'] > 0:
-            benchmark_command = 'ab -r -t %(timelimit)s -n 5000000 -c %(concurrent_requests)s -C "sessionid=NotARealSessionID" %(options)s "%(url)s"' % params
+            benchmark_command = 'ab -l -r -s 3 -t %(timelimit)s -n 5000000 -c %(concurrent_requests)s -C "sessionid=NotARealSessionID" %(options)s "%(url)s"' % params
+            #benchmark_command = './ab -l 1000 -r -t %(timelimit)s -n 5000000 -c %(concurrent_requests)s -C "sessionid=NotARealSessionID" %(options)s "%(url)s"' % params
+            #benchmark_command = 'ab -r -t %(timelimit)s -n 5000000 -c %(concurrent_requests)s -C "sessionid=NotARealSessionID" %(options)s "%(url)s"' % params
         else:
-            benchmark_command = 'ab -r -n %(num_requests)s -c %(concurrent_requests)s -C "sessionid=NotARealSessionID" %(options)s "%(url)s"' % params
+            benchmark_command = './ab -l -r -s 3 -n %(num_requests)s -c %(concurrent_requests)s -C "sessionid=NotARealSessionID" %(options)s "%(url)s"' % params
+            #benchmark_command = './ab -l 1000 -r -n %(num_requests)s -c %(concurrent_requests)s -C "sessionid=NotARealSessionID" %(options)s "%(url)s"' % params
+            #benchmark_command = 'ab -r -n %(num_requests)s -c %(concurrent_requests)s -C "sessionid=NotARealSessionID" %(options)s "%(url)s"' % params
         stdin, stdout, stderr = client.exec_command(benchmark_command)
 
         response = {}
 
         ab_results = stdout.read()
+        ab_error = stderr.read()
         ms_per_request_search = re.search('Time\ per\ request:\s+([0-9.]+)\ \[ms\]\ \(mean\)', ab_results)
 
         if not ms_per_request_search:
-            print 'Bee %i lost sight of the target (connection timed out running ab).' % params['i']
+            #print 'Bee %i lost sight of the target (connection timed out running ab).' % params['i']
+            print 'Bee %i lost sight of the target (connection timed out running ab). ab command: [%s] \nresult: [%s]\nerror:[%s].' % (params['i'], benchmark_command, ab_results, ab_error)
             return None
 
         requests_per_second_search = re.search('Requests\ per\ second:\s+([0-9.]+)\ \[#\/sec\]\ \(mean\)', ab_results)
@@ -465,15 +476,29 @@ def _print_results(results, params, csv_filename, gnuplot_filename, stats_filena
     if gnuplot_filename:
         print 'Joining gnuplot files from all bees.'
         files = [r['tsv_filename'] for r in results if r is not None]
-        # using csvkit utils to join the tsv files from all of the bees, adding a column to show whic bee produced each line. using sort because of performance problems with csvsort.
-        command = "csvstack -t -n bee -g " + ",".join(["%(i)s" % p for p in complete_bees_params]) + " " + " ".join(files) + " | csvcut -c 2-7,1 | sort -nk 5 -t ',' | sed 's/,/\t/g' > " + gnuplot_filename
+        # using csvkit utils to join the tsv files from all of the bees, adding a column to show which bee produced each line. using sort because of performance problems with csvsort.
+        #command = "csvstack -t -n bee -g " + ",".join(["%(i)s" % p for p in complete_bees_params]) + " " + " ".join(files) + " | csvcut -c 2-7,1 | sort -nk 5 -t ',' | sed 's/,/\t/g' > " + gnuplot_filename
+        # csvkit took too long for joining files, using builtins instead
+        command = "head -1 " + files[0] + " > " + gnuplot_filename + " && cat " + " ".join(files) + " | grep -v starttime >> " + gnuplot_filename
         call(command, shell=True)
         # removing temp files
         call(["rm"] + files)
 
     if stats_filename:
         print 'Calculating statistics.'
-        csvstat_results = check_output(["csvstat", "-tc", "ttime", gnuplot_filename])
+        try:
+            csvstat_results = check_output(["csvstat", "-tc", "ttime", gnuplot_filename])
+        except CalledProcessError as e:
+            print 'Error running csvstat: %d output: [%s]' % (e.returncode, e.output)
+            csvstat_results = """
+                               Dummy values:
+                               Min: 0
+                               Max: 0
+                               Mean: 0
+                               Median: 0
+                               Standard Deviation: 0
+                              """
+
         min_search = re.search('\sMin:\s+([0-9]+)', csvstat_results)
         max_search = re.search('\sMax:\s+([0-9]+)', csvstat_results)
         mean_search = re.search('\sMean:\s+([0-9.]+)', csvstat_results)
@@ -557,14 +582,22 @@ def attack(urls, n, c, t, **options):
     instance_count = len(instances)
 
     if c < instance_count:
-        print 'bees: error: the number of concurrent requests must be at least %d (num. instances)' % instance_count
-        return
+        instance_count = c
+        del instances[c:]
+        print 'bees: warning: the number of concurrent requests is lower than the number of bees, only %d of the bees will be used' % instance_count
     connections_per_instance = int(float(c) / instance_count)
     if instance_count < len(urls):
         print "bees: error: the number of urls (%d) can't exceed the number of bees (%d)" % (len(urls), instance_count)
         return
     if instance_count % len(urls):
        print "bees: warning: the load will not be evenly distributed between the urls because they can't be evenly divided between the bees [(%d bees) mod (%d urls) != 0]" % (instance_count, len(urls))
+    post_files = options.get('post_files')
+    if post_files:
+        if instance_count < len(post_files):
+            print "bees: error: the number of post_files (%d) can't exceed the number of bees (%d)" % (len(post_files), instance_count)
+            return
+        if instance_count % len(post_files):
+            print "bees: warning: the load will not be evenly distributed between the post_files because they can't be evenly divided between the bees [(%d bees) mod (%d post_files) != 0]" % (instance_count, len(post_files))
     if t > 0:
         print 'Each of %i bees will fire for %s seconds, %s at a time.' % (instance_count, t, connections_per_instance)
         requests_per_instance = 50000;
@@ -583,31 +616,35 @@ def attack(urls, n, c, t, **options):
     params = []
 
     for i, instance in enumerate(instances):
+        post_file = False
+        if post_files:
+            post_file = post_files[len(post_files) - (i % len(post_files)) - 1] # reverse iteration so it won't coinside with the urls iteration
         params.append({
             'i': i,
             'instance_id': instance.id,
             'instance_name': instance.public_dns_name,
             'url': urls[i % len(urls)],
+            #'url': urls[i % len(urls)] + "?uuid=" + str(uuid4()),
             'concurrent_requests': connections_per_instance,
             'num_requests': requests_per_instance,
             'timelimit': t,
             'username': username,
             'key_name': key_name,
             'headers': headers,
-            'post_file': options.get('post_file'),
+            'post_file': post_file,
             'mime_type': options.get('mime_type', ''),
             'gnuplot_filename': gnuplot_filename,
         })
 
-    print 'Stinging URLs so they will be cached for the attack.'
+#    print 'Stinging URLs so they will be cached for the attack.'
 
     # Ping url so it will be cached for testing
-    dict_headers = {}
-    if headers is not '':
-        dict_headers = headers = dict(h.split(':') for h in headers.split(';'))
-    for url in urls:
-        request = urllib2.Request(url, headers=dict_headers)
-        urllib2.urlopen(request).read()
+#    dict_headers = {}
+#    if headers is not '':
+#        dict_headers = headers = dict(h.split(':') for h in headers.split(';'))
+#    for url in urls:
+#        request = urllib2.Request(url, headers=dict_headers)
+#        urllib2.urlopen(request).read()
 
     print 'Organizing the swarm.'
 

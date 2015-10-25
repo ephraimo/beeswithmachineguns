@@ -62,7 +62,7 @@ def parse_options():
     # Required
     attack_cmd.add_argument('-u', '--url', metavar="URL", dest='urls', action='append', required=True, help="URL(s) of the target to attack.")
 
-    attack_cmd.add_argument('-p', '--post-file',  metavar="POST_FILE", dest='post_file', default=False, help="The POST file to deliver with the bee's payload.")
+    attack_cmd.add_argument('-p', '--post-file',  metavar="POST_FILE", dest='post_files', action='append', help="The POST file(s) to deliver with the bee's payload.")
     attack_cmd.add_argument('-m', '--mime-type',  metavar="MIME_TYPE", dest='mime_type', default='text/plain', help="The MIME type to send with the request.")
     attack_cmd.add_argument('-n', '--number', metavar="NUMBER", dest='number', type=int, default=1000, help="The number of total connections to make to the target (default: 1000).")
     attack_cmd.add_argument('-c', '--concurrent', metavar="CONCURRENT", dest='concurrent', type=int, default=100, help="The number of concurrent connections to make to the target (default: 100).")
@@ -100,7 +100,7 @@ def parse_options():
 
         additional_options = dict(
             headers=options.headers,
-            post_file=options.post_file,
+            post_files=options.post_files,
             mime_type=options.mime_type,
             csv_filename=options.csv_filename,
             gnuplot_filename=options.gnuplot_filename,
